@@ -62,9 +62,10 @@ if (-not $containerRunning) {
 
 # --- Define BaseModel to config mapping ---
 $configMap = @{
-    "Meta-llama/Llama-3.1-8B-Instruct" = "/app/torchtune/configs/llama3_1/8B_qlora_single_device.yaml"
-    "Meta-llama/Llama-3.2-3B-Instruct" = "/app/torchtune/configs/llama3_2/3B_qlora_single_device.yaml"
-    "Meta-llama/Llama-3.2-1B-Instruct" = "/app/torchtune/configs/llama3_2/1B_qlora_single_device.yaml"
+    "Meta-llama/Llama-3.1-8B-Instruct"   = "/app/torchtune/configs/llama3_1/8B_qlora_single_device.yaml"
+    "Meta-llama/Llama-3.2-3B-Instruct"   = "/app/torchtune/configs/llama3_2/3B_qlora_single_device.yaml"
+    "Meta-llama/Llama-3.2-1B-Instruct"   = "/app/torchtune/configs/llama3_2/1B_qlora_single_device.yaml"
+    "mistralai/Mistral-7B-Instruct-v0.1" = "/app/torchtune/configs/mistralai/7B_qlora_single_device.yaml"
 }
 
 # Retrieve the configuration value based on the provided BaseModel.
@@ -134,14 +135,27 @@ if ($TrainData) {
     $command += " dataset.data_files='$TrainData'"
 }
 else {
-    $command += " dataset.data_files=./data.json"
+    if ($BaseModel -like "*mistral*") {
+        $command += " dataset.data_files=./data_alpaca.json"
+    }
+    else {
+        $command += " dataset.data_files=./data_chat.json"
+    }
 }
 
-# Fixed dataset parameters
-$command += " dataset._component_=torchtune.datasets.chat_dataset"
-$command += " dataset.source=json"
-$command += " dataset.conversation_column=conversations"
-$command += " dataset.conversation_style=sharegpt"
+
+if ($BaseModel -like "*mistral*") {
+    # Mistral: alpaca dataset ONLY
+    $command += " dataset._component_=torchtune.datasets.alpaca_dataset"
+    $command += " dataset.source=json"
+}
+else {
+    # Llama: chat dataset
+    $command += " dataset._component_=torchtune.datasets.chat_dataset"
+    $command += " dataset.source=json"
+    $command += " dataset.conversation_column=conversations"
+    $command += " dataset.conversation_style=sharegpt"
+}
 
 if ($LoraRank) {
     $command += " model.lora_rank=$LoraRank"

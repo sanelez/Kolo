@@ -34,8 +34,8 @@ $jsonOutputFile = "data.json"
 
 try {
     Write-Host "Running conversion script in container kolo_container..."
-    docker exec kolo_container bash -c "source /opt/conda/bin/activate kolo_env && python /app/convert_jsonl_to_json.py '/app/$d' '/app/$jsonOutputFile'"
-    
+    docker exec kolo_container bash -lc "source /opt/conda/bin/activate kolo_env && python /app/convert_jsonl_to_json.py /app/$d --chat_out /app/data_chat.json --alpaca_out /app/data_alpaca.json"
+
     if ($?) {
         Write-Host "Conversion successful! Converted file created as $jsonOutputFile in the container." -ForegroundColor Green
     }
