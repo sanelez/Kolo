@@ -51,10 +51,11 @@ def convert_jsonl(input_file, chat_output, alpaca_output):
             # 2️⃣ Alpaca dataset (for Mistral)
             for i in range(0, len(converted), 2):
                 alpaca_records.append({
-                    "instruction": converted[i]["value"],
+                    "instruction": f"<s>[INST] {converted[i]['value']} [/INST]",
                     "input": "",
-                    "output": converted[i + 1]["value"]
+                    "output": f"{converted[i + 1]['value']}</s>"
                 })
+
 
     # Write outputs
     with open(chat_output, "w", encoding="utf-8") as f:

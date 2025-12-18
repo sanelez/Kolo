@@ -157,6 +157,14 @@ else {
     $command += " dataset.conversation_style=sharegpt"
 }
 
+if ($BaseModel -like "*mistral*") {
+    Write-Host "INFO: Mistral detected → Alpaca inference (raw prompt)" -ForegroundColor Cyan
+}
+else {
+    Write-Host "INFO: Llama detected → Chat inference (role-based)" -ForegroundColor Cyan
+}
+
+
 if ($LoraRank) {
     $command += " model.lora_rank=$LoraRank"
 }

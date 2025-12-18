@@ -2,6 +2,24 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import os
 import argparse
 
+import json
+
+def infer_model_type(model_path):
+    config_path = os.path.join(model_path, "config.json")
+    if not os.path.exists(config_path):
+        return "alpaca"
+
+    with open(config_path, "r") as f:
+        cfg = json.load(f)
+
+    model_type = cfg.get("model_type", "").lower()
+
+    if "llama" in model_type:
+        return "llama"
+
+    return "alpaca"
+
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--lora_model", type=str, required=True)
@@ -23,9 +41,9 @@ def rename_adapter_config(lora_model_path):
     else:
         print(f"No adapter_config.json found at '{original_config_path}'. Skipping rename.")
 
-def create_modelfile(file_path, from_line):
-    # Define the template block to be added.
-    template = '''TEMPLATE """{{- if .System }}<|start_header_id|>system<|end_header_id|>
+def create_modelfile(file_path, from_line, model_type):
+    if model_type == "llama":
+        template = '''TEMPLATE """{{- if .System }}<|start_header_id|>system<|end_header_id|>
 
 {{ .System }}<|eot_id|>
 {{- end }}
@@ -35,13 +53,21 @@ def create_modelfile(file_path, from_line):
 {{- end }}<|start_header_id|>assistant<|end_header_id|>
 
 """'''
+    else:
+        # Mistral / Alpaca-style instruction model
+        template = '''TEMPLATE """### Instruction:
+{{ .Prompt }}
+
+### Response:
+"""'''
+
     try:
         with open(file_path, "w") as f:
             f.write(f"FROM {from_line}\n")
-            f.write(template)
-        print(f"Created modelfile at {file_path}")
+            f.write(template + "\n")
+        print(f"Created Modelfile at {file_path} ({model_type})")
     except Exception as e:
-        print(f"Error creating modelfile at {file_path}: {e}")
+        print(f"Error creating Modelfile at {file_path}: {e}")
 
 def main():
     args = get_args()
@@ -62,13 +88,17 @@ def main():
     parent_dir = os.path.dirname(merged_output)
 
     # Create the model file for the unquantized model in the parent directory.
-    modelfile_path = os.path.join(parent_dir, "Modelfile")
-    create_modelfile(modelfile_path, "Merged.gguf")
+    model_type = infer_model_type(args.lora_model)
 
-    # If a quantization string is provided, create a second model file for the quantized model.
+    print(f"Inference template selected: {model_type}")
+
+    modelfile_path = os.path.join(parent_dir, "Modelfile")
+    create_modelfile(modelfile_path, "Merged.gguf", model_type)
+
     if args.quantization:
         modelfile_quant_path = os.path.join(parent_dir, f"Modelfile{args.quantization}")
-        create_modelfile(modelfile_quant_path, f"Merged{args.quantization}.gguf")
+        create_modelfile(modelfile_quant_path, f"Merged{args.quantization}.gguf", model_type)
+
 
 if __name__ == "__main__":
     main()
